@@ -1,0 +1,127 @@
+
+# A Steenekamp Reproducible Research
+## Loading and preprocessing the data
+### Read the data
+```{r read}
+dat1<-read.csv("activity.csv")
+```
+### Load libraries used in Assignment
+```{r Load libraries}
+library(dplyr)
+library(ggplot2)
+library(xtable)
+library(knitr)
+library(chron)
+```
+
+## What is mean total number of steps taken per day?
+### Histogram
+```{R total number of steps}
+dat2<-dat1
+# Omit NA's
+dat2<-na.omit(dat2)
+# Group the total steps by date and calculate the sum of each day
+totsteps<-dat2 %>% group_by(date) %>% summarise(tot=sum(steps))%>%arrange(date)
+# Transform the date
+totsteps<-totsteps %>% mutate(date = as.Date(date))
+# Transform the steps
+totsteps<-totsteps %>% mutate(tot = as.numeric(tot))
+#Plot the Histogram
+plot(totsteps$date,totsteps$tot,main="Total steps per day without imputed NA's",xlab="Date",ylab="Total Steps",type="h",col="blue")
+```
+
+
+### The mean of steps per day
+```{r calculate Mean}
+dat2<-dat1
+# Calculate the mean of steps per day
+meansteps<-dat2 %>% mutate(date=as.Date(date),steps=as.numeric(steps))
+meansteps<-meansteps %>% group_by(date) %>% summarise(avg=mean(steps))%>%arrange(date)
+meansteps<-as.data.frame.AsIs(meansteps)
+meansteps
+```
+
+
+### The median of steps per day (not sure if the median is zero, but running out of time...)
+```{r median1}
+dat2<-dat1
+# Calculate the median of steps per day
+mediansteps<-dat2 %>% mutate(date=as.Date(date),steps=as.numeric(steps))
+mediansteps<-mediansteps %>% group_by(date) %>% summarise(med=median(steps))%>%arrange(date)
+mediansteps<-as.data.frame.AsIs(mediansteps)
+mediansteps
+
+```
+
+##What is the average daily activity pattern?
+### Time-series Plot
+```{r Timeseries plot}
+# Create a dataset for average steps per interval
+avgstepsint<-dat2
+# Omit NA's
+avgstepsint<-na.omit(avgstepsint)
+# Group and Summarise
+avgstepsint<-avgstepsint %>% group_by(interval) %>% summarise(avg=mean(steps))%>%arrange(interval)
+# Plot
+plot(avgstepsint$interval,avgstepsint$avg,main="Time series average steps",xlab="Interval",ylab="Avg Steps",type="l",col="steelblue4")
+``` 
+
+### Which 5-minute interval contains the max number of steps? (Answer: 835)
+```{r max steps}
+# Get the maximum steps
+max(avgstepsint$avg)
+# Determine which row number
+which.max(avgstepsint$avg)
+# Get the interval
+maxint<-avgstepsint[104,1]
+maxint
+```
+## Imputing missing values
+### The strategy is to impute the mean of all means
+```{r Strategy for NAs}
+# Calculate the number of NA's
+dat1na<-sum(is.na(dat1))
+dat1na
+# Determine that only steps has NA's, none of the other variables
+dat2na<-sum(is.na(dat2$steps))
+dat2na
+# Calculate the average number of steps for all days
+dat3<-dat1
+dat3<-na.omit(dat3)
+dat3<-dat3 %>% group_by(date) %>% summarise(avg=mean(steps))%>%arrange(date)
+meanavg<-mean(dat3$avg)
+# Impute into dat4 dataset
+dat4<-dat1
+dat4[is.na(dat4)] = meanavg
+```
+### Histogram with imputed values
+
+```{r Histogram with imputed values}
+# Group and summarise imputed dataset
+totisteps<-dat4 %>% group_by(date) %>% summarise(tot=sum(steps))%>%arrange(date)
+# Mutate to date
+totisteps<-totisteps %>% mutate(date = as.Date(date))
+# Calculate the average number of steps for all days
+totisteps<-totisteps %>% mutate(tot = as.numeric(tot))
+# Impute into dat4 dataset
+plot(totisteps$date,totisteps$tot,main="Total steps per day with imputed NA's",xlab="Date",ylab="Total Steps",type="h",col="red")
+```    
+
+## Are there differences in activity patterns between weekdays and weekends?
+```{r weekends and weekdays}
+# Determine weekend or not
+dat5<-dat1
+dat5<-na.omit(dat5)
+dat5<-mutate(dat5,iswkend=is.weekend(dat5$date))
+# Filter weekends
+wkends<-filter(dat5,iswkend)
+# Filter weekdays
+wkdays<-filter(dat5,!iswkend)
+# Determine averages
+meanintwkd<-wkdays %>% group_by(interval) %>% summarise(avg=mean(steps))%>%arrange(interval)
+meanintwke<-wkends %>% group_by(interval) %>% summarise(avg=mean(steps))%>%arrange(interval)
+# Plot the graph
+par(mfrow = c(1,2))
+plot(meanintwkd$interval, meanintwkd$avg, type = "l", ylab = "Steps on Weekdays", xlab = "Interval",main="Weekdays",col="red")
+plot(meanintwke$interval, meanintwke$avg, type = "l", ylab = "Steps on Weekends", xlab = "Interval",main="Weekends",col="blue") 
+```   
